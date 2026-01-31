@@ -30,7 +30,7 @@ jobs:
           import random, subprocess
 
           scripts = [
-              "morning_briefing.py",
+            
               "english_daily_briefing.py",
               "astroman_morning_routine_ka_15.py",
           ]
