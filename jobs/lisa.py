@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""
+ASTROMAN — CEO STRATEGIC OPERATOR (2x Daily)
+
+10:00 — სტრატეგიული დილის ბრიფინგი
+21:00 — სტრუქტურული ანალიზი და ღრმა შეფასება
+
+Required Secrets:
+- TELEGRAM_BOT_TOKEN
+- TELEGRAM_CHAT_ID
+- OPENAI_API_KEY or ANTHROPIC_API_KEY
+"""
+
+from __future__ import annotations
+import os
+import requests
+from datetime import datetime
+
+MODE = os.getenv("MODE", "morning").strip().lower()
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+PROFILE = """
+ბიზნესი: ASTROMAN — კოსმოსური თემატიკის მაღაზია თბილისში.
+
+რეალობა:
+- მთავარი შემოსავალი მოდის ტელესკოპებიდან
+- აგვისტო და ზაფხული შედარებით სუსტი სეზონია
+- ფეისბუქ გვერდი ~60,000 აუდიტორია
+- მიზანი: დღეში 1000 GEL+
+- მარაგის ღირებულება 140000 Gel
+- ონლაინ გაყიდვების მიზანი 30%
+- კონკურენტები: სათამაშოების მაღაზიები და ზოგადი ელექტრონიკის მაღაზიები
+- პოტენციალი: სკოლები, ჰოტელები, ტურისტული კომპანიები
+
+მიზანი:
+- გაზარდოს საშუალო ჩეკი
+- გაზარდოს კონვერტაცია მაღაზიაში შემოსულ ადამიანებზე
+- გააქტიურდეს ონლაინ გაყიდვები
+- შექმნას სისტემური გაყიდვების პროცესი
+- შეამციროს ნელი მარაგი
+
+ტონი:
+იმსჯელე როგორც სტრატეგი CEO.
+არა მოტივაციური ტექსტი.
+კონკრეტული და კრიტიკული.
+ყოველ ჯერზე ახალი იდეები
+"""
+
+
+# ---------------- PROMPTS ---------------- #
+
+def build_prompt(mode: str):
+
+    if mode == "morning":
+        return f"""{PROFILE}
+
+დრო: 10:00 — ASTROMAN CEO დილის ბრიფინგი
+
+შექმენი ღრმა სტრატეგიული შეფასება დღისთვის.
+
+სტრუქტურა:
+
+I. 📊 რეალური მდგომარეობა დღეს
+- სად იკარგება პოტენციური შემოსავალი?
+- რა არის დღეს ყველაზე დიდი რისკი?
+- რა არის ყველაზე დიდი შესაძლებლობა?
+
+II. 💰 მაღალი ლევერიჯის 3 ქმედება
+თითოეულისთვის:
+• რატომ არის ეს მაღალი ლევერიჯი?
+• რა გავლენა ექნება დღიურ შემოსავალზე?
+• რა მოხდება თუ არ გაკეთდა?
+
+III. ⚔ კონკურენტული სისუსტე
+- სად ვართ დაუცველი?
+- რას გააკეთებდა ჭკვიანი კონკურენტი?
+
+IV. 📈 ერთი კონკრეტული მეტრიკა, რომელიც დღეს უნდა გაკონტროლდეს
+
+იმსჯელე კონკრეტულად ASTROMAN-ის კონტექსტში.
+არა ზოგადი ბიზნეს რჩევები.
+"""
+
+    if mode == "night":
+        return f"""{PROFILE}
+
+დრო: 21:00 — ASTROMAN CEO ღამის ანალიზი
+
+შექმენი ღრმა, კრიტიკული შეფასება.
+
+სტრუქტურა:
+
+I. 📉 დღიური შესრულების ცივი შეფასება
+- სად დავკარგეთ ფული?
+- სად იყო არაეფექტური დროის გამოყენება?
+- რომელი პროცესი არის სუსტი?
+
+II. 🏗 სისტემური პრობლემა
+- არის თუ არა გაყიდვების პროცესი სტრუქტურირებული?
+- რა უნდა ავტომატიზდეს?
+- სად არის bottleneck?
+
+III. 📚 ერთი ღრმა ბიზნეს კონცეფცია
+მაგალითად:
+- Unit Economics
+- Operating Leverage
+- Pricing Power
+- Inventory Turnover
+- Customer Acquisition Cost
+
+აუხსენი კონკრეტულად ASTROMAN-ზე და როგორ გამოიყენოს ხვალვე.
+
+IV. 🎯 ხვალის ერთი მთავარი სტრატეგიული ბრძოლა
+
+არ იყოს ზედაპირული ტექსტი.
+იმსჯელე როგორც ადამიანი, ვინც აშენებს გრძელვადიან ბრენდს.
+"""
+
+    return "ASTROMAN CEO MODE"
+
+
+# ---------------- AI CALL ---------------- #
+
+def call_openai(prompt: str):
+    url = "https://api.openai.com/v1/responses"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "gpt-4.1-mini",
+        "input": prompt,
+        "temperature": 0.6,
+        "max_output_tokens": 1400
+    }
+
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    data = r.json()
+
+    output = ""
+    for item in data.get("output", []):
+        for c in item.get("content", []):
+            if c.get("type") == "output_text":
+                output += c.get("text", "")
+
+    return output.strip()
+
+
+def call_claude(prompt: str):
+    url = "https://api.anthropic.com/v1/messages"
+    headers = {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+
+    payload = {
+        "model": "claude-3-5-sonnet-20240620",
+        "max_tokens": 1300,
+        "temperature": 0.6,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    data = r.json()
+
+    text = ""
+    for block in data.get("content", []):
+        if block.get("type") == "text":
+            text += block.get("text", "")
+
+    return text.strip()
+
+
+def generate(prompt: str):
+    if ANTHROPIC_API_KEY:
+        return call_claude(prompt)
+    if OPENAI_API_KEY:
+        return call_openai(prompt)
+    return "❌ API key missing."
+
+
+# ---------------- TELEGRAM ---------------- #
+
+def send_telegram(message: str):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("❌ Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
+        return
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+
+    # Telegram safe max length
+    MAX_LEN = 4000
+
+    parts = [message[i:i+MAX_LEN] for i in range(0, len(message), MAX_LEN)]
+
+    for index, part in enumerate(parts, start=1):
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": part,
+            "disable_web_page_preview": True
+        }
+
+        r = requests.post(url, json=payload, timeout=40)
+
+        print(f"Telegram part {index}: {r.status_code}")
+        if r.status_code != 200:
+            print("Telegram error:", r.text)
+
+
+# ---------------- MAIN ---------------- #
+
+def main():
+    print("Running ASTROMAN CEO mode...")
+    print("MODE:", MODE)
+
+    prompt = build_prompt(MODE)
+    print("Prompt created.")
+
+    text = generate(prompt)
+
+    if not text or len(text.strip()) == 0:
+        text = "⚠️ AI returned empty response."
+
+    print("AI response length:", len(text))
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    title = "🚀 ASTROMAN CEO დილის ბრიფინგი" if MODE == "morning" else "🌙 ASTROMAN CEO ღამის ანალიზი"
+
+    final_message = f"{title} — {today}\n\n{text}"
+
+    send_telegram(final_message)
+
+
+
+if __name__ == "__main__":
+    main()

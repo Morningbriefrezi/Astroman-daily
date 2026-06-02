@@ -1,0 +1,96 @@
+name: Astroman Business Hub
+
+on:
+  schedule:
+    - cron: "0 5 * * *"      # 09:00 Tbilisi — daily routine KA
+    - cron: "0 6 * * *"      # 10:00 Tbilisi — LISA morning
+    - cron: "0 8 * * *"      # 12:00 Tbilisi — marketing + product scout noon
+    - cron: "0 14 * * *"     # 18:00 Tbilisi — product scout evening
+    - cron: "0 16 * * *"     # 20:00 Tbilisi — marketing evening
+    - cron: "0 17 * * *"     # 21:00 Tbilisi — LISA evening
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Job to run
+        required: true
+        default: astroman_daily
+        type: choice
+        options:
+          - astroman_daily
+          - lisa_morning
+          - lisa_evening
+          - marketing
+          - product_scout
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Resolve job
+        id: job
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.job }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 5 * * *" ]; then
+            echo "name=astroman_daily" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 6 * * *" ]; then
+            echo "name=lisa_morning" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 8 * * *" ]; then
+            echo "name=marketing" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
+            echo "name=product_scout" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 16 * * *" ]; then
+            echo "name=marketing" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
+            echo "name=lisa_evening" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=astroman_daily" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set scout session label
+        if: steps.job.outputs.name == 'product_scout'
+        run: |
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" = "08" ]; then
+            echo "SESSION_LABEL=noon" >> "$GITHUB_ENV"
+          else
+            echo "SESSION_LABEL=evening" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run hub job
+        env:
+          JOB: ${{ steps.job.outputs.name }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SESSION_LABEL: ${{ env.SESSION_LABEL }}
+        run: python run.py
+
+      - name: Run product scout (noon slot)
+        if: steps.job.outputs.name == 'marketing' && github.event.schedule == '0 8 * * *'
+        env:
+          JOB: product_scout
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SESSION_LABEL: noon
+        run: python run.py
